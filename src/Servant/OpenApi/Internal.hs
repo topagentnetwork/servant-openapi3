@@ -384,7 +384,7 @@ instance (KnownSymbol sym, ToParamSchema a, HasOpenApi sub, SBoolI (FoldRequired
         & in_ .~ ParamHeader
         & schema ?~ (Inline $ toParamSchema (Proxy :: Proxy a))
 
-instance (ToSchema a, AllAccept cs, HasOpenApi sub, KnownSymbol (FoldDescription mods)) => HasOpenApi (ReqBody' mods cs a :> sub) where
+instance (ToSchema a, AllAccept cs, HasOpenApi sub, SBoolI (FoldRequired mods), KnownSymbol (FoldDescription mods)) => HasOpenApi (ReqBody' mods cs a :> sub) where
   toOpenApi _ = toOpenApi (Proxy :: Proxy sub)
     & addRequestBody reqBody
     & addDefaultResponse400 tname
@@ -397,11 +397,12 @@ instance (ToSchema a, AllAccept cs, HasOpenApi sub, KnownSymbol (FoldDescription
       reqBody = (mempty :: RequestBody)
         & description .~ transDesc (reflectDescription (Proxy :: Proxy mods))
         & content .~ InsOrdHashMap.fromList [(t, mempty & schema ?~ ref) | t <- allContentType (Proxy :: Proxy cs)]
+        & required ?~ reflectBool (Proxy :: Proxy (FoldRequired mods))
 
 -- | This instance is an approximation.
 --
 -- @since 1.1.7
-instance (ToSchema a, Accept ct, HasOpenApi sub, KnownSymbol (FoldDescription mods)) => HasOpenApi (StreamBody' mods fr ct a :> sub) where
+instance (ToSchema a, Accept ct, HasOpenApi sub, SBoolI (FoldRequired mods), KnownSymbol (FoldDescription mods)) => HasOpenApi (StreamBody' mods fr ct a :> sub) where
   toOpenApi _ = toOpenApi (Proxy :: Proxy sub)
     & addRequestBody reqBody
     & addDefaultResponse400 tname
@@ -414,6 +415,7 @@ instance (ToSchema a, Accept ct, HasOpenApi sub, KnownSymbol (FoldDescription mo
       reqBody = (mempty :: RequestBody)
         & description .~ transDesc (reflectDescription (Proxy :: Proxy mods))
         & content .~ InsOrdHashMap.fromList [(t, mempty & schema ?~ ref) | t <- toList $ contentTypes (Proxy :: Proxy ct)]
+        & required ?~ reflectBool (Proxy :: Proxy (FoldRequired mods))
 
 #if MIN_VERSION_servant(0,18,2)
 instance (HasOpenApi sub) => HasOpenApi (Fragment a :> sub) where
